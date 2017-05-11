@@ -78,18 +78,25 @@ int main(int argc, char **argv)
 
 
     // read va.txt
+   
+
+
+    // clock algorithm stuff
+    int cidx = 0;
+    int ridx = -1;//replacement index
+    int found =0;
     while(1){
         char *va = malloc(sizeof(char) * va_bits);
         if(fscanf(stdin,"%s ",va) !=1)
                 break;
-        printf("read in %s\n",va);
-        printf("res: %i\n",isHex(va));
+        printf("virtual address: %s\n",va);
+        //printf("res: %i\n",isHex(va));
 
         // get decimal value
         int v;
         int bHex = isHex(va);
         v = (bHex)  ? strtol(va,NULL,16) : strtol(va,NULL,10);
-        printf("VALUE: %i\n",v);
+        //printf("VALUE: %i\n",v);
 
 
         // get binary rep
@@ -99,11 +106,11 @@ int main(int argc, char **argv)
             for(int i =0;i<va_bits-strlen(b);i++)
                 n[i] = '0';
             strcpy(&n[(va_bits-strlen(b))],b);
-            printf("n: %s\n",n);
+            //printf("n: %s\n",n);
             free(b);
             b = n;
         }
-        printf("binary rep: %s\n",b);
+        //printf("binary rep: %s\n",b);
 
                         // check out page table
                       
@@ -120,21 +127,62 @@ int main(int argc, char **argv)
         for(int i =0;i<va_bits-offset;i++)
             vpt_bits[(va_bits-offset) -(i+1)] = b[va_bits-offset- (i+1) ];
 
-        printf("vpt bits: %s\n",vpt_bits);
-        printf("offset bits: %s\n",offset_bits);
+        //printf("vpt bits: %s\n",vpt_bits);
+        //printf("offset bits: %s\n",offset_bits);
         int vpt_idx = strtol(vpt_bits,NULL,2);
 
         
         // go to page table
+        int num_entries =j;
 
         if(table[vpt_idx][0] ==0){
+            
             if(table[vpt_idx][1] ==0)
                 puts("SEGFAULT");
-            else
+            #ifdef PROB1
+            else{
                 puts("DISK");
+                continue;
+            }
+            #else 
+            else{
+
+                found = 0;
+                while(found==0){
+                    if(table[cidx][0] !=0){// if valid page
+                        if(table[cidx][3] >0)// reset used bit if 1
+                            table[cidx][3] =0;
+                        else{// else this is the replacement
+                            printf("REPLACING IDX %i\n",cidx);
+                            table[cidx][0] = 0; // turn this page offf
+                            table[vpt_idx][2] = table[cidx][2]; // use this physical page
+                            table[vpt_idx][3] = 1; //use bit =1
+                            table[vpt_idx][0] = 1;//turn this page on
+                            //
+                            found =1;
+
+                            // print out table
+                            for(int i =0;i<num_entries;i++){
+                                printf("%i %i %i %i\n",table[i][0],table[i][1],
+                                        table[i][2],table[i][3]);
+                            }
+
+                        }
+                    }
+                    cidx++;
+                    if(cidx ==num_entries)
+                        cidx=0;
+
+                
+                }
+
+
+            }
+            #endif
         }
+
         // else theres a physical address
-        else{
+            table[vpt_idx][3] = 1;
             char *pa_pgnum = itoa(table[vpt_idx][2],2);
             strcat(pa_pgnum,offset_bits);
             // append 0's if necessary
@@ -143,20 +191,13 @@ int main(int argc, char **argv)
                 for(int i =0;i<pa_bits-strlen(pa_pgnum);i++)
                     n[i] = '0';
                 strcpy(&n[(pa_bits-strlen(pa_pgnum))],pa_pgnum);
-                printf("n: %s\n",n);
                 free(pa_pgnum);
                 pa_pgnum = n;
             }
 
-            printf("pa_pgnum : %s\n",pa_pgnum);
-            printf("physical address: %s\n",pa_pgnum);
-        }
-
-
-
-
-
-
+            int x = strtol(pa_pgnum,NULL,2);
+            printf("physical address: %s      DECIMAL(%i)\n",pa_pgnum,x);
+            printf("\n\n");
 
 
     }
